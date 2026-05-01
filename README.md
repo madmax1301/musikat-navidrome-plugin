@@ -42,12 +42,12 @@ NAVIDROME_PLUGINS_DIR=~/.navidrome/plugins make install-local
 
 ### Option 1 — Pre-built release (recommended)
 
-Grab the latest `musikat-navidrome-plugin.ndp` from the [GitHub Releases](https://github.com/maxhartmann/musikat-navidrome-plugin/releases) page. Each release is built by the `release.yml` GitHub Action whenever a `v*.*.*` tag is pushed.
+Grab the latest `musikat-navidrome-plugin.ndp` from the [GitHub Releases](https://github.com/madmax1301/musikat-navidrome-plugin/releases) page. Each release is built by the `release.yml` GitHub Action whenever a `v*.*.*` tag is pushed.
 
 ### Option 2 — Build from source
 
 ```bash
-git clone https://github.com/maxhartmann/musikat-navidrome-plugin.git
+git clone https://github.com/madmax1301/musikat-navidrome-plugin.git
 cd musikat-navidrome-plugin
 make package    # → musikat-navidrome-plugin.ndp
 ```

@@ -238,7 +238,10 @@ func (c *Client) SyncStatus() (*SyncStatusResponse, error) {
 	return out, nil
 }
 
-// TriggerSyncRequest mirrors backend `PluginSyncRequest`.
+// TriggerSyncRequest mirrors backend `PluginSyncRequest`. PlaylistName + NavidromeUser
+// are optional; if NavidromeUser is set, finished tracks become discoverable via
+// /api/plugin/finished-tracks for plugin-side per-user playlist creation.
+// PlaylistName supports the {date} placeholder — backend substitutes it before use.
 type TriggerSyncRequest struct {
 	ListenBrainzUser string `json:"listenbrainz_user"`
 	TopArtists       int    `json:"top_artists"`
@@ -246,6 +249,27 @@ type TriggerSyncRequest struct {
 	HistoryDays      int    `json:"history_days,omitempty"`
 	MaxTotal         int    `json:"max_total"`
 	Location         string `json:"location,omitempty"`
+	PlaylistName     string `json:"playlist_name,omitempty"`
+	NavidromeUser    string `json:"navidrome_user,omitempty"`
+}
+
+// FinishedTrack mirrors backend `/api/plugin/finished-tracks` items. The
+// SubsonicTrackID is resolved server-side (admin-auth search3) and cached in
+// the job payload — when present, the plugin can skip its own search3 call.
+type FinishedTrack struct {
+	DeezerID         string `json:"deezer_id"`
+	Artist           string `json:"artist"`
+	Title            string `json:"title"`
+	PlaylistName     string `json:"playlist_name"`
+	CompletedAtMs    int64  `json:"completed_at_ms"`
+	SubsonicTrackID  string `json:"subsonic_track_id"`
+}
+
+type FinishedTracksResponse struct {
+	Items          []FinishedTrack `json:"items"`
+	Count          int             `json:"count"`
+	NavidromeUser  string          `json:"navidrome_user"`
+	SinceDays      int             `json:"since_days"`
 }
 
 type TriggerSyncResponse struct {
@@ -340,4 +364,27 @@ func (c *Client) Download(trackID string, hint TrackHint, location string) Downl
 		}
 		return DownloadResult{Outcome: DownloadFailed, Status: status, Message: snippet}
 	}
+}
+
+// FinishedTracks queries the backend for tracks of a given Navidrome user
+// that finished downloading within the last `sinceDays` days. Used by the
+// plugin's reconcile-task to populate per-user Subsonic playlists.
+//
+// playlistName is optional — when set, only tracks tagged with that playlist
+// are returned (useful when reconciling a single specific playlist).
+func (c *Client) FinishedTracks(navidromeUser string, sinceDays int, playlistName string) (*FinishedTracksResponse, error) {
+	if sinceDays <= 0 {
+		sinceDays = 60
+	}
+	q := url.Values{}
+	q.Set("navidrome_user", navidromeUser)
+	q.Set("since_days", fmt.Sprintf("%d", sinceDays))
+	if playlistName != "" {
+		q.Set("playlist_name", playlistName)
+	}
+	out := &FinishedTracksResponse{}
+	if err := c.request("GET", "/api/plugin/finished-tracks?"+q.Encode(), nil, out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
