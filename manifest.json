@@ -1,0 +1,109 @@
+{
+  "$schema": "https://raw.githubusercontent.com/navidrome/navidrome/refs/heads/master/plugins/manifest-schema.json",
+  "$id": "navidrome://plugins/manifest/musikat-sync",
+  "name": "musikat-sync",
+  "author": "Max Hartmann",
+  "version": "0.1.0",
+  "description": "Triggers musikat (FastAPI backend) on a schedule for automatic discovery + download. The plugin pulls 'tracks you'd probably like' from your ListenBrainz top-artists via Deezer artist-radio and queues them in musikat.",
+  "website": "https://github.com/maxhartmann/musikat-navidrome-plugin",
+  "permissions": {
+    "http": {
+      "reason": "Calls the musikat backend (/api/plugin/health, /api/plugin/library/missing, /api/plugin/sync-status, /api/import/csv*) on the configured host.",
+      "requiredHosts": ["*"]
+    },
+    "scheduler": {
+      "reason": "Registers a recurring cron job to trigger the musikat discovery pipeline (default: daily 07:00)."
+    },
+    "kvstore": {
+      "reason": "Persists last-run status (timestamps, counts, last error) so the plugin's settings page can show a read-only status block.",
+      "maxSize": "1MB"
+    }
+  },
+  "config": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "musikat_url": {
+          "type": "string",
+          "title": "musikat URL",
+          "description": "Base URL of the musikat backend. Example: http://musikat.lan:8000 (no trailing slash).",
+          "minLength": 7
+        },
+        "musikat_token": {
+          "type": "string",
+          "title": "API Token",
+          "description": "Bearer token from musikat's MUSIKAT_API_TOKEN env var. Leave empty if musikat runs without a token."
+        },
+        "listenbrainz_user": {
+          "type": "string",
+          "title": "ListenBrainz Username",
+          "description": "Public LB user whose top-artists drive discovery. No LB token needed."
+        },
+        "cron_expression": {
+          "type": "string",
+          "title": "Cron Expression",
+          "description": "When to run the sync. Default: '0 7 * * *' (daily at 07:00). Use crontab.guru to test custom values.",
+          "default": "0 7 * * *"
+        },
+        "top_artists": {
+          "type": "integer",
+          "title": "Top N Artists",
+          "description": "How many of your most-played LB artists to sample for discovery.",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 10
+        },
+        "tracks_per_artist": {
+          "type": "integer",
+          "title": "Tracks per Artist",
+          "description": "Discovery depth per artist (Deezer artist-radio).",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 5
+        },
+        "max_queue_per_run": {
+          "type": "integer",
+          "title": "Max Queue per Run",
+          "description": "Hard cap on how many tracks can be queued in a single sync run.",
+          "minimum": 1,
+          "maximum": 500,
+          "default": 30
+        }
+      },
+      "required": ["musikat_url", "listenbrainz_user", "cron_expression"]
+    },
+    "uiSchema": {
+      "type": "VerticalLayout",
+      "elements": [
+        {
+          "type": "Group",
+          "label": "Connection",
+          "elements": [
+            { "type": "Control", "scope": "#/properties/musikat_url" },
+            {
+              "type": "Control",
+              "scope": "#/properties/musikat_token",
+              "options": { "format": "password" }
+            }
+          ]
+        },
+        {
+          "type": "Group",
+          "label": "Discovery",
+          "elements": [
+            { "type": "Control", "scope": "#/properties/listenbrainz_user" },
+            { "type": "Control", "scope": "#/properties/cron_expression" },
+            {
+              "type": "HorizontalLayout",
+              "elements": [
+                { "type": "Control", "scope": "#/properties/top_artists" },
+                { "type": "Control", "scope": "#/properties/tracks_per_artist" },
+                { "type": "Control", "scope": "#/properties/max_queue_per_run" }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
